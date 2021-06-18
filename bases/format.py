@@ -9,7 +9,7 @@
 """
 
 
-def api_format(code, result, data, *args, **kwargs):
-    dic = {'code': code, 'result': result, 'data': data}
+def api_format(code, result, data, exception='', *args, **kwargs):
+    dic = {'code': code, 'result': result, 'data': data, 'exception': exception}
     dic.update(kwargs)
     return dic

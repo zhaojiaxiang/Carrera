@@ -15,12 +15,14 @@ Including another URLconf
 """
 
 from django.urls import path, include
-from django.conf.urls.i18n import i18n_patterns
+# from django.conf.urls.i18n import i18n_patterns
 
 from carrera.urlpatterns import api_urlpatterns
 
-urlpatterns = []
-
-urlpatterns += i18n_patterns(
+urlpatterns = [
     path('api/', include(api_urlpatterns)),
-)
+]
+
+# urlpatterns += i18n_patterns(
+#     path('api/', include(api_urlpatterns)),
+# )

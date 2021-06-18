@@ -12,7 +12,7 @@ from django.contrib import admin
 from django.urls import path, include
 from rest_framework.documentation import include_docs_urls
 
-from utils.token.handler import APITokenObtainPairView
+from utils.token.handler import APITokenObtainPairView, APITokenRefreshView
 
 conf_urlpatterns = [
     path('admin/', admin.site.urls),
@@ -22,6 +22,7 @@ conf_urlpatterns = [
 
 common_urlpatterns = [
     path('login/', APITokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('token/refresh/', APITokenRefreshView.as_view(), name='token_refresh_pair'),
 ]
 
 api_urlpatterns = [

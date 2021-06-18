@@ -39,6 +39,8 @@ MSG_40003_UPDATE_NG = _("update ng")
 MSG_40004_DELETE_NG = _("delete ng")
 # Not Found错误，同MSG_40001_RETRIEVE_NG类似
 MSG_40005_NOT_FOUND = _("not found")
+# Method Not Allowed错误
+MSG_40006_METHOD_NOT_ALLOWED = _("method %s not allowed")
 
 # 用户相关处理失败时返回的信息
 # 用户不存在
@@ -53,6 +55,8 @@ MSG_50004_UNAUTHORIZED = _("user unauthorized")
 MSG_50005_AUTHENTICATION_FAILED = _("user authentication failed")
 # 用户无权限
 MSG_50006_PERMISSION_DENIED = _("user permission denied")
+# Token失效
+MSG_50007_TOKEN_INVALID = _("token is invalid or expired")
 
 # 数据库异常时返回的信息
 MSG_60000_DB_NG = _("db ng")

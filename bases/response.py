@@ -9,11 +9,13 @@
 """
 from django.db import IntegrityError, DatabaseError
 from django.http import Http404
-from rest_framework.exceptions import NotAuthenticated, PermissionDenied, NotFound, ValidationError
+from rest_framework.exceptions import NotAuthenticated, PermissionDenied, NotFound, ValidationError, \
+    AuthenticationFailed, MethodNotAllowed
 from rest_framework.response import Response
-from rest_framework_simplejwt.exceptions import AuthenticationFailed
+from rest_framework_simplejwt.exceptions import InvalidToken
 
-from bases import results, messages, codes
+from bases import results, messages
+from bases import codes
 from bases.format import api_format
 
 
@@ -27,24 +29,37 @@ class APIResponse(Response):
     def __init__(self, data=None, status=None, headers=None, code=codes.CODE_20000_OK, result=results.RESULT_OK, *args,
                  **kwargs):
 
+        exception = ""
+
+        # DRF Simple JWT InvalidToken
+        if isinstance(data, InvalidToken):
+            data = str(messages.MSG_50007_TOKEN_INVALID)
+            result = results.RESULT_NG
+            code = codes.CODE_50007_TOKEN_INVALID
+
         # Django rest-framework exceptions
+        if isinstance(data, MethodNotAllowed):
+            data = str(messages.MSG_40006_METHOD_NOT_ALLOWED % data.args[0])
+            result = results.RESULT_NG
+            code = codes.CODE_40006_METHOD_NOT_ALLOWED
+
         if isinstance(data, NotAuthenticated):
-            data = messages.MSG_50004_UNAUTHORIZED
+            data = str(messages.MSG_50004_UNAUTHORIZED)
             result = results.RESULT_NG
             code = codes.CODE_50004_UNAUTHORIZED
 
         if isinstance(data, AuthenticationFailed):
-            data = messages.MSG_50005_AUTHENTICATION_FAILED
+            data = str(messages.MSG_50005_AUTHENTICATION_FAILED)
             result = results.RESULT_NG
             code = codes.CODE_50005_AUTHENTICATION_FAILED
 
         if isinstance(data, PermissionDenied):
-            data = messages.MSG_50006_PERMISSION_DENIED
+            data = str(messages.MSG_50006_PERMISSION_DENIED)
             result = results.RESULT_NG
             code = codes.CODE_50006_PERMISSION_DENIED
 
         if isinstance(data, NotFound):
-            data = messages.MSG_40005_NOT_FOUND
+            data = str(messages.MSG_40005_NOT_FOUND)
             result = results.RESULT_NG
             code = codes.CODE_40005_NOT_FOUND if code == codes.CODE_20000_OK else code
 
@@ -55,12 +70,12 @@ class APIResponse(Response):
 
         # Django exceptions
         if isinstance(data, Http404):
-            data = messages.MSG_40001_RETRIEVE_NG
+            data = str(messages.MSG_40001_RETRIEVE_NG)
             result = results.RESULT_NG
             code = codes.CODE_40001_RETRIEVE_NG if code == codes.CODE_20000_OK else code
 
         if isinstance(data, IntegrityError):
-            data = messages.MSG_60001_DB_UNIQUE_NG
+            data = str(messages.MSG_60001_DB_UNIQUE_NG)
             result = results.RESULT_NG
             code = codes.CODE_60001_DB_UNIQUE_NG
 
@@ -71,19 +86,22 @@ class APIResponse(Response):
             code = codes.CODE_60000_DB_NG
 
         if isinstance(data, str):
-            data = {'exception': data}
             result = results.RESULT_NG if result == results.RESULT_OK else result
             code = codes.CODE_40000_NG if code == codes.CODE_20000_OK else code
+
+        if result == results.RESULT_NG:
+            exception = data
+            data = None
 
         if data is None:
             data = {}
 
-        dic = api_format(code=code, result=result, data=data, *args, **kwargs)
+        dic = api_format(code=code, result=result, data=data, exception=exception, *args, **kwargs)
 
         super().__init__(data=dic, status=status, headers=headers)
 
     def convert_exception(self, exc):
         if hasattr(exc, 'detail'):
             data = exc.detail
-            return {'exception': data}
-        return {'exception': repr(exc)}
+            return data
+        return repr(exc)

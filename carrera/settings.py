@@ -26,8 +26,8 @@ env = environ.Env(
     # set casting, default value
     DEBUG=(bool, False)
 )
-# reading .env file
-environ.Env.read_env(str(BASE_DIR)+"/.env")
+# reading .config file
+environ.Env.read_env(str(BASE_DIR)+"/.config")
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/2.2/howto/deployment/checklist/
@@ -36,7 +36,7 @@ environ.Env.read_env(str(BASE_DIR)+"/.env")
 SECRET_KEY = 'i$hny=rq(txng)$$gqzap&!dnk5d$wm_1g+z&&00inmrbho7@*'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = env.bool('DEBUG', True)
 
 ALLOWED_HOSTS = ["*"]
 
@@ -136,7 +136,7 @@ DATABASES = {
 # Internationalization
 # https://docs.djangoproject.com/en/2.2/topics/i18n/
 
-LANGUAGE_CODE = 'zh-Hans'
+LANGUAGE_CODE = 'en'
 
 TIME_ZONE = 'Asia/Shanghai'
 
@@ -185,9 +185,12 @@ REST_FRAMEWORK = {
     ],
     # 重新指定schema_class的配置, 否则访问 /docs/时报错
     'DEFAULT_SCHEMA_CLASS': 'rest_framework.schemas.coreapi.AutoSchema',
-    # 'EXCEPTION_HANDLER': 'permissions.views.api_exception_handler'
+    'EXCEPTION_HANDLER': 'utils.exception.handler.api_exception_handler'
 }
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': datetime.timedelta(minutes=1),
+    'AUTH_HEADER_TYPES': ('JWT',),
+    'ACCESS_TOKEN_LIFETIME': datetime.timedelta(minutes=env.int("ACCESS_TOKEN_LIFETIME")),
+    'REFRESH_TOKEN_LIFETIME': datetime.timedelta(minutes=env.int("REFRESH_TOKEN_LIFETIME")),
+    'ROTATE_REFRESH_TOKENS': True,
 }

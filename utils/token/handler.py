@@ -11,8 +11,10 @@ import re
 
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
-from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer, TokenRefreshSerializer
+from rest_framework_simplejwt.settings import api_settings
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from bases import codes, results, messages
 from bases.format import api_format
@@ -42,22 +44,23 @@ class APITokenObtainPairSerializer(TokenObtainPairSerializer):
                 if user.check_password(password):
                     refresh = self.get_token(user)
                     serializer = LoginSerializer(user)
-                    data = api_format(code, result, serializer.data, token=str(refresh.access_token), refresh=str(refresh))
+                    data = api_format(code, result, serializer.data, token=str(refresh.access_token),
+                                      refresh=str(refresh))
                 else:
                     code = codes.CODE_50002_ERROR_PASS
                     result = results.RESULT_NG
-                    exception = {"exception": messages.MSG_50002_ERROR_PASS}
-                    data = api_format(code, result, exception)
+                    exception = messages.MSG_50002_ERROR_PASS
+                    data = api_format(code, result, {}, exception)
             else:
                 code = codes.CODE_50003_NOT_VALID
                 result = results.RESULT_NG
-                exception = {"exception": messages.MSG_50003_NOT_VALID}
-                data = api_format(code, result, exception)
+                exception = messages.MSG_50003_NOT_VALID
+                data = api_format(code, result, {}, exception)
         else:
             code = codes.CODE_50001_ERROR_USER
             result = results.RESULT_NG
-            exception = {"exception": messages.MSG_50001_ERROR_USER}
-            data = api_format(code, result, exception)
+            exception = messages.MSG_50001_ERROR_USER
+            data = api_format(code, result, {}, exception)
         return data
 
 
@@ -70,3 +73,38 @@ class LoginSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = "__all__"
+
+
+class APITokenRefreshSerializer(TokenRefreshSerializer):
+    """
+    自定义刷新JWT Token
+    """
+    refresh = serializers.CharField()
+
+    def validate(self, attrs):
+        code = codes.CODE_20000_OK
+        result = results.RESULT_OK
+        refresh = RefreshToken(attrs['refresh'])
+
+        data = api_format(code, result, {}, token=str(refresh.access_token))
+
+        if api_settings.ROTATE_REFRESH_TOKENS:
+            if api_settings.BLACKLIST_AFTER_ROTATION:
+                try:
+                    # Attempt to blacklist the given refresh token
+                    refresh.blacklist()
+                except AttributeError:
+                    # If blacklist app not installed, `blacklist` method will
+                    # not be present
+                    pass
+
+            refresh.set_jti()
+            refresh.set_exp()
+
+            data['refresh'] = str(refresh)
+
+        return data
+
+
+class APITokenRefreshView(TokenRefreshView):
+    serializer_class = APITokenRefreshSerializer

@@ -9,7 +9,7 @@
 """
 
 
-class SerializerValidateHandle:
+class SerializerValidateHandler:
     """
     在Serializer中使用validate方法进行字段验证时使用该类
     handle_validation负责收集错误字段以及错误信息
