@@ -133,11 +133,3 @@ static/uploads/reports/
 media/
 
 /apps/accounts/migrations/
-/apps/checkouts/migrations/
-/apps/liaisons/migrations/
-/apps/projects/migrations/
-/apps/qa/migrations/
-/apps/rbac/migrations/
-/apps/reports/migrations/
-/apps/reviews/migrations/
-/apps/systems/migrations/
