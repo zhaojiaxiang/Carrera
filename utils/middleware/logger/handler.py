@@ -78,7 +78,10 @@ class CollectionMiddleware(MiddlewareMixin):
             else:
                 response_body = json.loads(str(response.content, encoding='utf-8'))
         else:
-            response_body = response.data if response.status_code == 200 else response.reason_phrase
+            try:
+                response_body = response.data if response.status_code == 200 else response.reason_phrase
+            except:
+                response_body = response.reason_phrase
         request.META['RESP_BODY'] = response_body
 
         # 获取请求的 view 视图名称
