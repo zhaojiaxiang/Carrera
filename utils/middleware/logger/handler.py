@@ -18,6 +18,9 @@ from django.utils.deprecation import MiddlewareMixin
 from carrera.settings import LOG_PATH
 
 
+WHITE_LIST_URL = ['media', 'static']
+
+
 def _get_request_headers(request):
     headers = {}
     for k, v in request.META.items():
@@ -37,61 +40,61 @@ def _get_response_headers(response):
 class CollectionMiddleware(MiddlewareMixin):
 
     def process_request(self, request):
+        if request.path[1:].split('/')[0] not in WHITE_LIST_URL:
+            request_body = dict(request.POST)
 
-        request_body = dict(request.POST)
-
-        if request_body:
-            request.META['REQUEST_BODY'] = request_body
-        else:
-            try:
-                request_body = json.loads(
-                    str(request.body, encoding='utf-8').replace(' ', '').replace('\n', '').replace('\t', ''))
+            if request_body:
                 request.META['REQUEST_BODY'] = request_body
-            except:
-                request.META['REQUEST_BODY'] = {}
+            else:
+                try:
+                    request_body = json.loads(
+                        str(request.body, encoding='utf-8').replace(' ', '').replace('\n', '').replace('\t', ''))
+                    request.META['REQUEST_BODY'] = request_body
+                except:
+                    request.META['REQUEST_BODY'] = {}
 
-        if 'HTTP_X_FORWARDED_FOR' in request.META:
-            remote_address = request.META['HTTP_X_FORWARDED_FOR']
-        else:
-            remote_address = request.META['REMOTE_ADDR']
-        request.META['IP'] = remote_address
-        # 获取请求的 username，如果是未登录的则为 AnonymousUser
-        if not isinstance(request.user, AnonymousUser):
-            user = request.user.username
-        else:
-            user = 'AnonymousUser'
-        request.META['USER'] = user
-        request.META['REQUEST_TIME'] = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')
+            if 'HTTP_X_FORWARDED_FOR' in request.META:
+                remote_address = request.META['HTTP_X_FORWARDED_FOR']
+            else:
+                remote_address = request.META['REMOTE_ADDR']
+            request.META['IP'] = remote_address
+            # 获取请求的 username，如果是未登录的则为 AnonymousUser
+            if not isinstance(request.user, AnonymousUser):
+                user = request.user.username
+            else:
+                user = 'AnonymousUser'
+            request.META['USER'] = user
+            request.META['REQUEST_TIME'] = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')
 
     def process_response(self, request, response):
-
-        if not isinstance(request.user, AnonymousUser):
-            user = request.user.username
-        else:
-            user = 'AnonymousUser'
-        request.META['USER'] = user
-
-        # 获取响应内容
-        if response['content-type'] == 'application/json':
-            if getattr(response, 'streaming', False):
-                response_body = '<<<Streaming>>>'
+        if request.path[1:].split('/')[0] not in WHITE_LIST_URL:
+            if not isinstance(request.user, AnonymousUser):
+                user = request.user.username
             else:
-                response_body = json.loads(str(response.content, encoding='utf-8'))
-        else:
+                user = 'AnonymousUser'
+            request.META['USER'] = user
+
+            # 获取响应内容
+            if response['content-type'] == 'application/json':
+                if getattr(response, 'streaming', False):
+                    response_body = '<<<Streaming>>>'
+                else:
+                    response_body = json.loads(str(response.content, encoding='utf-8'))
+            else:
+                try:
+                    response_body = response.data if response.status_code == 200 else response.reason_phrase
+                except:
+                    response_body = response.reason_phrase
+            request.META['RESP_BODY'] = response_body
+
+            # 获取请求的 view 视图名称
             try:
-                response_body = response.data if response.status_code == 200 else response.reason_phrase
-            except:
-                response_body = response.reason_phrase
-        request.META['RESP_BODY'] = response_body
+                request.META['VIEW'] = request.resolver_match.view_name
+            except AttributeError:
+                request.META['VIEW'] = None
 
-        # 获取请求的 view 视图名称
-        try:
-            request.META['VIEW'] = request.resolver_match.view_name
-        except AttributeError:
-            request.META['VIEW'] = None
-
-        request.META['STATUS_CODE'] = response.status_code
-        request.META['RESPONSE_TIME'] = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')
+            request.META['STATUS_CODE'] = response.status_code
+            request.META['RESPONSE_TIME'] = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')
 
         return response
 
@@ -105,25 +108,26 @@ class LoggerMiddleware(MiddlewareMixin):
         pass
 
     def process_response(self, request, response):
-        log_data = {
-            'request': {
-                'timestamp': request.META['REQUEST_TIME'],
-                'user': request.META['USER'],
-                'method': request.method,
-                'path': request.get_full_path(),
-                'body': request.META['REQUEST_BODY'],
-                'view': request.META['VIEW'],
-                'ip': request.META['IP'],
-                'headers': _get_request_headers(request),
-            },
-            'response': {
-                'timestamp': request.META['RESPONSE_TIME'],
-                'status': request.META['STATUS_CODE'],
-                'body': request.META['RESP_BODY'],
-                'headers': _get_response_headers(response),
-            },
-        }
-        write_log(str(log_data))
+        if request.path[1:].split('/')[0] not in WHITE_LIST_URL:
+            log_data = {
+                'request': {
+                    'timestamp': request.META['REQUEST_TIME'],
+                    'user': request.META['USER'],
+                    'method': request.method,
+                    'path': request.get_full_path(),
+                    'body': request.META['REQUEST_BODY'],
+                    'view': request.META['VIEW'],
+                    'ip': request.META['IP'],
+                    'headers': _get_request_headers(request),
+                },
+                'response': {
+                    'timestamp': request.META['RESPONSE_TIME'],
+                    'status': request.META['STATUS_CODE'],
+                    'body': request.META['RESP_BODY'],
+                    'headers': _get_response_headers(response),
+                },
+            }
+            write_log(str(log_data))
         return response
 
 
