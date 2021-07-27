@@ -85,6 +85,12 @@ class APIResponse(Response):
             result = results.RESULT_NG
             code = codes.CODE_60000_DB_NG
 
+        # 以上异常无法处理时执行
+        if isinstance(data, Exception):
+            data = repr(data)
+            result = results.RESULT_NG
+            code = codes.CODE_40000_NG
+
         if isinstance(data, str):
             result = results.RESULT_NG if result == results.RESULT_OK else result
             code = codes.CODE_40000_NG if code == codes.CODE_20000_OK else code
