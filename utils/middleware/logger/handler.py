@@ -67,36 +67,39 @@ class CollectionMiddleware(MiddlewareMixin):
             request.META['REQUEST_TIME'] = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')
 
     def process_response(self, request, response):
-        if request.path[1:].split('/')[0] not in WHITE_LIST_URL:
-            if not isinstance(request.user, AnonymousUser):
-                user = request.user.username
-            else:
-                user = 'AnonymousUser'
-            request.META['USER'] = user
-
-            # 获取响应内容
-            if response['content-type'] == 'application/json':
-                if getattr(response, 'streaming', False):
-                    response_body = '<<<Streaming>>>'
+        try:
+            if request.path[1:].split('/')[0] not in WHITE_LIST_URL:
+                if not isinstance(request.user, AnonymousUser):
+                    user = request.user.username
                 else:
-                    response_body = json.loads(str(response.content, encoding='utf-8'))
-            else:
+                    user = 'AnonymousUser'
+                request.META['USER'] = user
+
+                # 获取响应内容
+                if response['content-type'] == 'application/json':
+                    if getattr(response, 'streaming', False):
+                        response_body = '<<<Streaming>>>'
+                    else:
+                        response_body = json.loads(str(response.content, encoding='utf-8'))
+                else:
+                    try:
+                        response_body = response.data if response.status_code == 200 else response.reason_phrase
+                    except:
+                        response_body = response.reason_phrase
+                request.META['RESP_BODY'] = response_body
+
+                # 获取请求的 view 视图名称
                 try:
-                    response_body = response.data if response.status_code == 200 else response.reason_phrase
-                except:
-                    response_body = response.reason_phrase
-            request.META['RESP_BODY'] = response_body
+                    request.META['VIEW'] = request.resolver_match.view_name
+                except AttributeError:
+                    request.META['VIEW'] = None
 
-            # 获取请求的 view 视图名称
-            try:
-                request.META['VIEW'] = request.resolver_match.view_name
-            except AttributeError:
-                request.META['VIEW'] = None
-
-            request.META['STATUS_CODE'] = response.status_code
-            request.META['RESPONSE_TIME'] = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')
-
-        return response
+                request.META['STATUS_CODE'] = response.status_code
+                request.META['RESPONSE_TIME'] = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')
+        except Exception as ex:
+            write_log(repr(ex))
+        finally:
+            return response
 
 
 class LoggerMiddleware(MiddlewareMixin):
@@ -108,27 +111,31 @@ class LoggerMiddleware(MiddlewareMixin):
         pass
 
     def process_response(self, request, response):
-        if request.path[1:].split('/')[0] not in WHITE_LIST_URL:
-            log_data = {
-                'request': {
-                    'timestamp': request.META['REQUEST_TIME'],
-                    'user': request.META['USER'],
-                    'method': request.method,
-                    'path': request.get_full_path(),
-                    'body': request.META['REQUEST_BODY'],
-                    'view': request.META['VIEW'],
-                    'ip': request.META['IP'],
-                    'headers': _get_request_headers(request),
-                },
-                'response': {
-                    'timestamp': request.META['RESPONSE_TIME'],
-                    'status': request.META['STATUS_CODE'],
-                    'body': request.META['RESP_BODY'],
-                    'headers': _get_response_headers(response),
-                },
-            }
-            write_log(str(log_data))
-        return response
+        try:
+            if request.path[1:].split('/')[0] not in WHITE_LIST_URL:
+                log_data = {
+                    'request': {
+                        'timestamp': request.META['REQUEST_TIME'],
+                        'user': request.META['USER'],
+                        'method': request.method,
+                        'path': request.get_full_path(),
+                        'body': request.META['REQUEST_BODY'],
+                        'view': request.META['VIEW'],
+                        'ip': request.META['IP'],
+                        'headers': _get_request_headers(request),
+                    },
+                    'response': {
+                        'timestamp': request.META['RESPONSE_TIME'],
+                        'status': request.META['STATUS_CODE'],
+                        'body': request.META['RESP_BODY'],
+                        'headers': _get_response_headers(response),
+                    },
+                }
+                write_log(str(log_data))
+        except Exception as ex:
+            write_log(repr(ex))
+        finally:
+            return response
 
 
 def write_log(log_info):
