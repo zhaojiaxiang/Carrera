@@ -108,6 +108,9 @@ class APIResponse(Response):
 
     def convert_exception(self, exc):
         if hasattr(exc, 'detail'):
-            data = exc.detail
+            if isinstance(exc.detail, dict):
+                data = exc.detail
+            else:
+                data = str(exc.detail[0])
             return data
         return repr(exc)
